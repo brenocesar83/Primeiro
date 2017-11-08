@@ -29,6 +29,8 @@ titulo = soup.find("div", "title-bar clearfix")
 #  16 números                32,00                                             #
 #  17 números               272,00                                             #
 #  18 números             1.632,00                                             #
+#  Atualização do comentario                                                   #
+#                                                                              #
 ################################################################################
 
 def imprimir_content(content, tag):
