@@ -1,7 +1,10 @@
+# Conectar na API do site Buxfer.com e baixar as transações de um
+# determinado período, imprimindo para um CSV
+
 import requests
 
 username = "brenocesar@gmail.com"
-password = ""
+password = "oioioi"
 
 base = "https://www.buxfer.com/api"
 url = base + "/login?userid=" + username + "&password=" + password
