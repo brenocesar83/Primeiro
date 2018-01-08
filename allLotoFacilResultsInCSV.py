@@ -1,23 +1,22 @@
 from bs4 import BeautifulSoup
 import csv
 import zipfile
-import os
+import requests
 
-# Caminho para download do arquivo de resultados
-comando = "wget -N 'http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_lotfac.zip'"
-os.system(comando)
+url = "http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_lotfac.zip"
+response = requests.get(url, stream=True)
 
 # Extraindo o zip
 zFile = zipfile.ZipFile("D_lotfac.zip")
 arquivo = zFile.open(zFile.infolist()[0])
 
 
-#arquivo = open("/home/cabox/workspace/D_LOTFAC.HTM", encoding='latin-1')
 soup = BeautifulSoup(arquivo, "html.parser")  # html.parser html5lib lxml
 samples = soup.find("table")
 
-# Separa apenas linha 
+
 def titulo(content, tag):
+    """" Separa apenas linha """
     count = 0
     titles = []
     for row in content.find_all(tag):
@@ -27,8 +26,9 @@ def titulo(content, tag):
             break
     return titles
 
-# Separa valores de cada coluna isolando em linhas 
+
 def resultados(content, tag, tag2):
+    """" Separa valores de cada coluna isolando em linhas """
     linhas = []
     for row in content.find_all(tag):
         count = 0
@@ -46,7 +46,7 @@ def resultados(content, tag, tag2):
     return linhas
 
 
-def escreverArquivo():
+def escrever_arquivo():
     file = open("/home/cabox/workspace/lotofacil.csv", 'w')
     writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
     rs = resultados(samples, "tr", "td")
@@ -55,13 +55,15 @@ def escreverArquivo():
         writer.writerow(row)
     file.close()
 
-escreverArquivo()
+
+escrever_arquivo()
 
 
-def lerArquivo():
+def ler_arquivo():
     file = open("/home/cabox/workspace/lotofacil.csv", newline='')
     reader = csv.reader(file)
     for row in reader:
         print(row)
 
-lerArquivo()
+
+ler_arquivo()
