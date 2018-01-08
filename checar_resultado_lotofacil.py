@@ -1,12 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
-import resultados_lotofacil
-import meus_jogos_lotofacil 
 
 url = "http://loterias.caixa.gov.br/wps/portal/loterias/landing/lotofacil"
 pagina = requests.get(url)
 
-if (pagina.status_code != 200):
+if pagina.status_code != 200:
   print("Erro {} ao tentar conectar na URL {}".format(pagina.status_code, url))
 else:
   print("Conexao realizada com sucesso!", pagina.status_code)
@@ -14,11 +12,11 @@ else:
   
 html = pagina.text
 soup = BeautifulSoup(html, "html.parser")  # html.parser html5lib lxml
-#print("Titulo da Pagina: ", soup.title.encode('utf-8'))  # utf-8 latin-1 ascii
 samples = soup.find("table", "simple-table")
-# print(samples)
 titulo = soup.find("div", "title-bar clearfix")
 
+
+"""
 ################################################################################
 #  R$  4,00 para as apostas com 11 prognósticos certos entre os 15 sorteados;  #
 #  R$  8,00 para as apostas com 12 prognósticos certos entre os 15 sorteados;  #
@@ -32,6 +30,8 @@ titulo = soup.find("div", "title-bar clearfix")
 #  Atualização do comentario                                                   #
 #                                                                              #
 ################################################################################
+"""
+
 
 def imprimir_content(content, tag):
     rows = []
@@ -46,13 +46,8 @@ def resultado_em_inteiro():
         result[i] = int(result[i])
     return result
 
-  
-#titulo = titulo.text.replace("\n", " ")
-#print(titulo.encode('utf-8'))
-#print(imprimir_content(titulo, "span"))
-#print(imprimir_content(samples, "td"))
+
 print(" ============= ", imprimir_content(titulo, "span")[0], resultado_em_inteiro(), " ============= ")
-#print(meus_jogos_lotofacil.carregar_jogos())
 
 
 def compara_resultado(resultado, jogos, concurso, quantidade_jogos):
