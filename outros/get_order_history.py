@@ -69,30 +69,59 @@ def get_public_api(base, complement, options):
 
 def get_percent_colored(value):
     if value < 0:
-        return '\x1b[6;30;41m' + '{:.2f}%'.format(value) + '\x1b[0m'
+        return '\x1b[6;30;41m' + ' {:7.2f}% '.format(value) + '\x1b[0m'
     else:
-        if 0 < value < 7:
-            return '\x1b[6;30;43m' + '{:.2f}%'.format(value) + '\x1b[0m'
+        if 0 <= value < 7:
+            return '\x1b[6;30;43m' + ' {:8.2f}% '.format(value) + '\x1b[0m'
         else:
-            return '\x1b[6;30;42m' + '{:.2f}%'.format(value) + '\x1b[0m'
+            return '\x1b[6;30;42m' + ' {:8.2f}% '.format(value) + '\x1b[0m'
 
 
 def dashboard1():
+    dolar_btc = get_public_api(BASE_URL_V2_0, '/pub/currencies/GetBTCPrice', '')['bpi']['USD']['rate_float']
     balances = get_api_sign_url_private(BASE_URL_V2_0, '/key/balance/getbalances')
-    total_btc = 0
+    estimated_total_btc = 0
+    total_btc_used = 0
+    order_history = get_api_sign_url_private(BASE_URL_V1_1, '/account/getorderhistory')
     for elem in balances:
         if elem['Balance']['Balance'] > 0:
             currency = '?market=BTC-' + elem['Balance']['Currency']
             last_info = get_public_api(BASE_URL_V1_1, '/public/getticker', currency)
+            total_currency = 0
+            complete_currency = 'BTC-' + elem['Balance']['Currency']
             if last_info != 'INVALID_MARKET':
                 last_value = last_info['Last']
             else:
-                last_value = 0
-            total_btc += elem['Balance']['Balance']*last_value
-            print('Moeda', elem['Balance']['Currency'], 'Quantidade', '{:.8f}'.format(elem['Balance']['Balance']),
-                  'Last value', '{:.8f}'.format(last_value))
-    dolar_btc = get_public_api(BASE_URL_V2_0, '/pub/currencies/GetBTCPrice', '')['bpi']['USD']['rate_float']
-    print('Estimated Value: BTC', '{:.8f}'.format(total_btc), 'US$', '{:.2f}'.format(total_btc*dolar_btc))
+                last_value = 1
+            for order in order_history:
+                if order['OrderType'] == 'LIMIT_SELL' and order['Exchange'] == complete_currency:
+                    print('I sold {}$ {:.8f} for BTC$ {:.8f}(BTC$ {:.8f})'.format(order['Exchange'], order['Quantity'],
+                                                                                  order['Price'], order['PricePerUnit']))
+                    total_currency -= order['Quantity']
+                elif order['OrderType'] == 'LIMIT_BUY' and order['Exchange'] == complete_currency:
+                    gain_color = get_percent_colored(((last_value/order['PricePerUnit'])-1)*100)
+                    total_btc_used += order['Price'] + order['Commission']
+                    print('| I bought {:9}$ {:13.8f} for BTC$ {:.8f} (BTC$ {:.8f}) (US$ {:.2f}) and now I have BTC$ {:.8f} '
+                          '(BTC$ {:.8f}) (US$ {:.2f}) gain of {} |'.format(order['Exchange'], order['Quantity'],
+                                                                         order['Price'], order['PricePerUnit'],
+                                                                         order['Price'] * dolar_btc,
+                                                                         order['Quantity'] * last_value, last_value,
+                                                                         order['Quantity'] * last_value * dolar_btc,
+                                                                         gain_color))
+                    total_currency += order['Quantity']
+                if total_currency == elem['Balance']['Balance']:
+                    break
+            # print('Calculated total', total_currency)
+            estimated_total_btc += elem['Balance']['Balance']*last_value
+            print('| Balance: {}$ {:14.8f} = BTC$ {:.8f} = US$ {:.2f} {:>106}'.format(elem['Balance']['Currency'], elem['Balance']['Balance'],
+                                                             elem['Balance']['Balance'] * last_value,
+                                                                           elem['Balance']['Balance'] * last_value * dolar_btc, '|'))
+            print('-' * 167)
+
+    print('BTC used', '{:.8f}'.format(total_btc_used))
+    print('Estimated Value: BTC', '{:.8f}'.format(estimated_total_btc), 'US$', '{:.2f}'.format(estimated_total_btc*dolar_btc))
+    gain_color = get_percent_colored(((estimated_total_btc/total_btc_used)-1)*100)
+    print('Real gain', gain_color)
 
 
 def dashboard2():
@@ -109,15 +138,23 @@ def dashboard2():
             last_value = last_info['Last']
         else:
             last_value = 0
+
         gain = ((last_value/elem['PricePerUnit'])-1)*100
         gain_color = get_percent_colored(gain)
-        previous_value += elem['Price'] + elem['Commission']
-        estimated_value += elem['Quantity']*last_value - ((elem['Quantity']*last_value)*0.0025)
+
         percent += gain
-        print('My current position is {} for the purchase {:.8f} {} for {:.8f}. The total was {:.8f} and the present '
-              'value is {:.8f}'.format(gain_color, elem['Quantity'], elem['Exchange'], elem['PricePerUnit'],
-                                       elem['Price'], last_value))
-        if count == 9:
+        if elem['OrderType'] == 'LIMIT_SELL':
+            print('Sold {:.8f} {} for {:.8f}. The total was {:.8f} and now the price is {:.8f} {}'
+                  .format(elem['Quantity'], elem['Exchange'], elem['PricePerUnit'], elem['Price'], last_value, gain_color))
+            estimated_value -= elem['Quantity'] * last_value - ((elem['Quantity'] * last_value) * 0.0025)
+            previous_value -= elem['Price'] + elem['Commission']
+        else:
+            estimated_value += elem['Quantity'] * last_value - ((elem['Quantity'] * last_value) * 0.0025)
+            previous_value += elem['Price'] + elem['Commission']
+            print('My current position is {} for the purchase {:.8f} {} for {:.8f}. The total was {:.8f} and the '
+                  'present value is {:.8f}'.format(gain_color, elem['Quantity'], elem['Exchange'], elem['PricePerUnit'],
+                                                   elem['Price'], last_value))
+        if count == 10:
             break
     dolar_btc = get_public_api(BASE_URL_V2_0, '/pub/currencies/GetBTCPrice', '')['bpi']['USD']['rate_float']
     real_percent = get_percent_colored(((estimated_value/previous_value)-1)*100)
@@ -125,8 +162,8 @@ def dashboard2():
     print('Estimated Value: BTC', '{:.8f}'.format(estimated_value), 'US$', '{:.2f}'.format(estimated_value*dolar_btc))
 
 
-# dashboard1()
-dashboard2()
+dashboard1()
+# dashboard2()
 
 """"
 // work in progress
