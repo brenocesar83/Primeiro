@@ -5,32 +5,8 @@ import time
 import json
 
 
-BUY_ORDER_BOOK = 'buy'
-SELL_ORDER_BOOK = 'sell'
-BOTH_ORDER_BOOK = 'both'
-
-TICK_INTERVAL_ONE_MIN = 'oneMin'
-TICK_INTERVAL_FIVE_MIN = 'fiveMin'
-TICK_INTERVAL_HOUR = 'hour'
-TICK_INTERVAL_THIRTY_MIN = 'thirtyMin'
-TICK_INTERVAL_DAY = 'Day'
-
-ORDER_TYPE_LIMIT = 'LIMIT'
-ORDER_TYPE_MARKET = 'MARKET'
-
-TIME_IN_EFFECT_GOOD_TIL_CANCELLED = 'GOOD_TIL_CANCELLED'
-TIME_IN_EFFECT_IMMEDIATE_OR_CANCEL = 'IMMEDIATE_OR_CANCEL'
-TIME_IN_EFFECT_FILL_OR_KILL = 'FILL_OR_KILL'
-
-CONDITION_TYPE_NONE = 'NONE'
-CONDITION_TYPE_GREATER_THAN = 'GREATER_THAN'
-CONDITION_TYPE_LESS_THAN = 'LESS_THAN'
-CONDITION_TYPE_STOP_LOSS_FIXED = 'STOP_LOSS_FIXED'
-CONDITION_TYPE_STOP_LOSS_PERCENTAGE = 'STOP_LOSS_PERCENTAGE'
-
 BASE_URL_V1_1 = 'https://bittrex.com/api/v1.1'
 BASE_URL_V2_0 = 'https://bittrex.com/api/v2.0'
-
 NONCE = str(int(time.time() * 1000))
 
 with open("secrets.json") as secrets_file:
@@ -45,7 +21,6 @@ def get_api_sign_url_private(base, complement):
     api_sign = hmac.new(API_SECRET.encode(), url.encode(), hashlib.sha512)
     headers = {'apisign': api_sign.hexdigest()}
     token = requests.post(url, headers=headers)
-    # print(url)
     if token.status_code == 200:
         if token.json()['success']:
             return token.json()['result']
@@ -72,9 +47,9 @@ def get_percent_colored(value):
         return '\x1b[6;30;41m' + ' {:7.2f}% '.format(value) + '\x1b[0m'
     else:
         if 0 <= value < 7:
-            return '\x1b[6;30;43m' + ' {:8.2f}% '.format(value) + '\x1b[0m'
+            return '\x1b[6;30;43m' + ' {:7.2f}% '.format(value) + '\x1b[0m'
         else:
-            return '\x1b[6;30;42m' + ' {:8.2f}% '.format(value) + '\x1b[0m'
+            return '\x1b[6;30;42m' + ' {:7.2f}% '.format(value) + '\x1b[0m'
 
 
 def dashboard1():
@@ -101,22 +76,28 @@ def dashboard1():
                 elif order['OrderType'] == 'LIMIT_BUY' and order['Exchange'] == complete_currency:
                     gain_color = get_percent_colored(((last_value/order['PricePerUnit'])-1)*100)
                     total_btc_used += order['Price'] + order['Commission']
-                    print('| I bought {:9}$ {:13.8f} for BTC$ {:.8f} (BTC$ {:.8f}) (US$ {:.2f}) and now I have BTC$ {:.8f} '
-                          '(BTC$ {:.8f}) (US$ {:.2f}) gain of {} |'.format(order['Exchange'], order['Quantity'],
-                                                                         order['Price'], order['PricePerUnit'],
-                                                                         order['Price'] * dolar_btc,
-                                                                         order['Quantity'] * last_value, last_value,
-                                                                         order['Quantity'] * last_value * dolar_btc,
-                                                                         gain_color))
+                    print('| I bought {:>5}$ {:13.8f} for BTC$ {:.8f} (BTC$ {:.8f}) (US$ {:.2f}) and now I have BTC$ '
+                          '{:.8f} (BTC$ {:.8f}) (US$ {:.2f}) gain of {} |'.format(order['Exchange'][4:],
+                                                                                  order['Quantity'],
+                                                                                  order['Price'], order['PricePerUnit'],
+                                                                                  order['Price'] * dolar_btc,
+                                                                                  order['Quantity'] * last_value,
+                                                                                  last_value,
+                                                                                  order['Quantity'] * last_value *
+                                                                                  dolar_btc, gain_color))
                     total_currency += order['Quantity']
                 if total_currency == elem['Balance']['Balance']:
                     break
             # print('Calculated total', total_currency)
+            print('| {:>29} {:>131}'.format('-' * 14, '|'))
             estimated_total_btc += elem['Balance']['Balance']*last_value
-            print('| Balance: {}$ {:14.8f} = BTC$ {:.8f} = US$ {:.2f} {:>106}'.format(elem['Balance']['Currency'], elem['Balance']['Balance'],
-                                                             elem['Balance']['Balance'] * last_value,
-                                                                           elem['Balance']['Balance'] * last_value * dolar_btc, '|'))
-            print('-' * 167)
+            print('| Balance: {:>5}$ {:13.8f} = BTC$ {:.8f} = US$ {:6.2f} {:>100}'.format(elem['Balance']['Currency'],
+                                                                                          elem['Balance']['Balance'],
+                                                                                          elem['Balance']['Balance'] *
+                                                                                          last_value,
+                                                                                          elem['Balance']['Balance'] *
+                                                                                          last_value * dolar_btc, '|'))
+            print('|', '_' * 161, '|', sep='')
 
     print('BTC used', '{:.8f}'.format(total_btc_used))
     print('Estimated Value: BTC', '{:.8f}'.format(estimated_total_btc), 'US$', '{:.2f}'.format(estimated_total_btc*dolar_btc))
@@ -145,7 +126,8 @@ def dashboard2():
         percent += gain
         if elem['OrderType'] == 'LIMIT_SELL':
             print('Sold {:.8f} {} for {:.8f}. The total was {:.8f} and now the price is {:.8f} {}'
-                  .format(elem['Quantity'], elem['Exchange'], elem['PricePerUnit'], elem['Price'], last_value, gain_color))
+                  .format(elem['Quantity'], elem['Exchange'], elem['PricePerUnit'], elem['Price'], last_value,
+                          gain_color))
             estimated_value -= elem['Quantity'] * last_value - ((elem['Quantity'] * last_value) * 0.0025)
             previous_value -= elem['Price'] + elem['Commission']
         else:
